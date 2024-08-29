@@ -443,18 +443,6 @@ func (t *Target) GetHostTagsMap() map[string]string {
 	return m
 }
 
-func (t *Target) GetHostTagsMap() map[string]string {
-	m := make(map[string]string)
-	for _, item := range t.HostTags {
-		arr := strings.Split(item, "=")
-		if len(arr) != 2 {
-			continue
-		}
-		m[arr[0]] = arr[1]
-	}
-	return m
-}
-
 func (t *Target) FillMeta(meta *HostMeta) {
 	t.MemUtil = meta.MemUtil
 	t.CpuUtil = meta.CpuUtil
