@@ -886,3 +886,207 @@ CREATE INDEX idx_component ON builtin_payloads (component);
 CREATE INDEX idx_builtin_payloads_name ON builtin_payloads (name);
 CREATE INDEX idx_cate ON builtin_payloads (cate);
 CREATE INDEX idx_type ON builtin_payloads (type);
+
+
+CREATE TABLE target_busi_group (
+  id BIGSERIAL PRIMARY KEY,
+  target_ident VARCHAR(191) NOT NULL,
+  group_id BIGINT NOT NULL,
+  update_at BIGINT NOT NULL,
+  CONSTRAINT idx_target_group UNIQUE (target_ident, group_id)
+);
+
+
+CREATE TABLE ping_idc_to_idc (
+  id BIGSERIAL PRIMARY KEY, -- 自增主键
+  default_rule SMALLINT NOT NULL, -- is default rule，tinyint 替换为 smallint
+  source_idc_id BIGINT NOT NULL, -- idc id
+  target_idc_id BIGINT NOT NULL, -- idc id
+  settings VARCHAR(255) NOT NULL, -- protocol and ports config
+  net_ident_percent BIGINT NOT NULL, -- Percentage of netident ping
+  create_time BIGINT NOT NULL, -- 创建时间
+  update_time BIGINT NOT NULL, -- 更新时间
+  create_by VARCHAR(64) DEFAULT '', -- 创建人
+  update_by VARCHAR(64) DEFAULT '', -- 更新人
+  status INTEGER NOT NULL DEFAULT 1 -- 0: disable, 1: enable
+);
+
+CREATE INDEX idx_idcid ON ping_idc_to_idc (source_idc_id, target_idc_id);
+
+
+CREATE TABLE ping_collect (
+  id BIGSERIAL PRIMARY KEY, -- 自增主键
+  name VARCHAR(255) NOT NULL, -- collect name
+  disabled BIGINT NOT NULL, -- 1 is true, 0 is false
+  sidc_id BIGINT NOT NULL, -- idc id
+  sidc_name VARCHAR(64) NOT NULL, -- idc name
+  tidc_name VARCHAR(64) NOT NULL, -- idc name
+  tidc_id BIGINT NOT NULL, -- idc id
+  source_ips TEXT NOT NULL, -- source IPs
+  sident VARCHAR(64) NOT NULL, -- source tor cidr or rack name
+  cate VARCHAR(128) NOT NULL, -- collect plugin name
+  content TEXT NOT NULL, -- collect body
+  version VARCHAR(128) NOT NULL, -- md5 version
+  create_time BIGINT NOT NULL, -- 创建时间
+  update_time BIGINT NOT NULL -- 更新时间
+);
+
+CREATE INDEX idx_ping_collect_name ON ping_collect (name);
+CREATE INDEX idx_ping_collect_disabled ON ping_collect (disabled);
+CREATE INDEX idx_ping_collect_updated ON ping_collect (update_time);
+
+
+CREATE TABLE profiling_history (
+  id BIGSERIAL PRIMARY KEY, -- 自增主键
+  language VARCHAR(32) NOT NULL, -- programming language
+  event VARCHAR(32) NOT NULL, -- profiling event
+  format VARCHAR(32) NOT NULL, -- profiling output format
+  runtime VARCHAR(32) NOT NULL, -- process runtime
+  cid VARCHAR(255) NOT NULL, -- container id
+  duration BIGINT NOT NULL, -- sampling duration
+  process VARCHAR(64) NOT NULL, -- process name
+  task_id BIGINT NOT NULL DEFAULT 0, -- 所属任务的 id
+  exec_task_id BIGINT NOT NULL DEFAULT 0, -- 创建的 exec task id
+  create_time TIMESTAMP NOT NULL, -- 创建时间
+  update_time TIMESTAMP NOT NULL, -- 更新时间
+  create_by VARCHAR(64) DEFAULT '' -- Created By
+);
+
+CREATE INDEX idx_profiling_history_task_id ON profiling_history (task_id);
+CREATE INDEX idx_profiling_history_exec_task_id ON profiling_history (exec_task_id);
+
+
+CREATE TABLE profiling_task (
+  id BIGSERIAL PRIMARY KEY, -- 自增主键
+  name VARCHAR(255) NOT NULL, -- module name
+  language VARCHAR(32) NOT NULL, -- programming language
+  runtime VARCHAR(32) NOT NULL, -- process runtime
+  datasource BIGINT NOT NULL DEFAULT 0, -- datasource
+  namespace VARCHAR(64) NOT NULL, -- namespace
+  duration BIGINT NOT NULL, -- sampling duration
+  process VARCHAR(64) NOT NULL, -- process name
+  busi_group BIGINT NOT NULL DEFAULT 0, -- 业务组id
+  create_time TIMESTAMP NOT NULL, -- 创建时间
+  update_time TIMESTAMP NOT NULL, -- 更新时间
+  update_by VARCHAR(64) DEFAULT '' -- Update By
+);
+
+CREATE INDEX idx_profiling_task_busi_group ON profiling_task (busi_group);
+
+
+CREATE TABLE logs_download (
+  id BIGSERIAL PRIMARY KEY, -- 自增主键
+  cate VARCHAR(64) NOT NULL, -- datasource category
+  datasource_id BIGINT NOT NULL,
+  query TEXT, -- 查询内容
+  version VARCHAR(128) NOT NULL, -- md5 version
+  config TEXT, -- 配置信息
+  server VARCHAR(64) NOT NULL, -- server addr
+  status INT NOT NULL DEFAULT 0, -- 0: doing, 1: done, 2: expired
+  create_time BIGINT NOT NULL, -- 创建时间（UNIX时间戳）
+  create_by VARCHAR(64) DEFAULT '', -- 创建人
+  update_time BIGINT NOT NULL -- 更新时间（UNIX时间戳）
+);
+
+CREATE INDEX cate_ds_id ON logs_download (cate, datasource_id);
+CREATE INDEX idx_logs_download_create_by ON logs_download (create_by);
+
+
+CREATE TABLE logevent_task (
+  id BIGSERIAL PRIMARY KEY, -- id，自增主键
+  name VARCHAR(255) NOT NULL, -- module name
+  enable SMALLINT NOT NULL DEFAULT 1, -- tinyint 替换为 smallint
+  busi_group BIGINT NOT NULL DEFAULT 0, -- 业务组id
+  settings TEXT, -- mediumtext 替换为 text
+  create_at BIGINT NOT NULL DEFAULT 0, -- 创建时间
+  create_by VARCHAR(64) DEFAULT '', -- 创建人
+  update_at BIGINT NOT NULL DEFAULT 0, -- 更新时间
+  update_by VARCHAR(64) DEFAULT '' -- 更新人
+);
+
+CREATE INDEX idx_logevent_task_busi_group ON logevent_task (busi_group);
+
+
+CREATE TABLE notification (
+  id BIGSERIAL PRIMARY KEY, -- 自增主键
+  title VARCHAR(255) NOT NULL, -- notification title
+  content TEXT, -- notification content
+  start BIGINT NOT NULL, -- notification start time
+  "end" BIGINT NOT NULL, -- notification end time
+  expire_seconds BIGINT NOT NULL DEFAULT 30, -- notification duration
+  create_time TIMESTAMP NOT NULL, -- 创建时间
+  update_time TIMESTAMP NOT NULL, -- 更新时间
+  update_by VARCHAR(64) DEFAULT '' -- Update By
+);
+
+
+CREATE TABLE collect_test_task (
+  id BIGSERIAL PRIMARY KEY, -- ID, auto-increment
+  uuid VARCHAR(36) DEFAULT '', -- UUID
+  idents TEXT, -- 标识符列表
+  input VARCHAR(64) DEFAULT '', -- 输入
+  config TEXT, -- 配置
+  status VARCHAR(20) DEFAULT '', -- 状态
+  timeout BIGINT NOT NULL DEFAULT 0, -- 超时时间
+  create_at BIGINT NOT NULL DEFAULT 0, -- 创建时间
+  create_by VARCHAR(64) DEFAULT '' -- 创建人
+);
+
+
+CREATE TABLE collect_test_res (
+  id BIGSERIAL, -- ID, auto-increment (BIGSERIAL is used for auto-increment)
+  uuid VARCHAR(36) NOT NULL, -- UUID
+  ident VARCHAR(255) DEFAULT NULL, -- 标识符
+  data TEXT, -- 数据
+  log TEXT, -- 日志
+  create_at BIGINT DEFAULT NULL, -- 创建时间
+  PRIMARY KEY (id, uuid) -- Primary key is a combination of id and uuid
+);
+
+CREATE INDEX idx_collect_test_res_ident ON collect_test_res(ident);
+
+
+CREATE TABLE template_screen (
+  id BIGSERIAL PRIMARY KEY, -- auto-incrementing ID (BIGSERIAL)
+  name VARCHAR(255) NOT NULL, -- module name
+  busi_group BIGINT NOT NULL DEFAULT 0, -- 业务组id
+  configs TEXT, -- screen configs
+  create_at BIGINT NOT NULL DEFAULT 0, -- 创建时间
+  create_by VARCHAR(64) DEFAULT '', -- 创建人
+  update_at BIGINT NOT NULL DEFAULT 0, -- 更新时间
+  update_by VARCHAR(64) DEFAULT '' -- 更新人
+);
+
+CREATE INDEX idx_template_screen_busi_group ON template_screen(busi_group);
+
+
+CREATE TABLE collect (
+  id BIGSERIAL PRIMARY KEY, -- auto-incrementing ID (BIGSERIAL)
+  name VARCHAR(255) NOT NULL, -- name
+  queries TEXT NOT NULL, -- queries
+  group_id BIGINT NOT NULL, -- group id
+  disabled INT NOT NULL DEFAULT 0, -- disabled status (0 for false, 1 for true)
+  cate VARCHAR(255) NOT NULL, -- category
+  version VARCHAR(255) NOT NULL DEFAULT '', -- version
+  content TEXT NOT NULL, -- content
+  create_at BIGINT NOT NULL DEFAULT 0, -- creation timestamp
+  create_by VARCHAR(64) NOT NULL DEFAULT '', -- creator
+  update_at BIGINT NOT NULL DEFAULT 0, -- update timestamp
+  update_by VARCHAR(64) NOT NULL DEFAULT '', -- updater
+  component VARCHAR(255) NOT NULL, -- component name
+  component_id BIGINT NOT NULL DEFAULT 0, -- component ID
+  enable_time TEXT, -- enable time
+  active_target_nums BIGINT NOT NULL DEFAULT 0, -- active target numbers
+  heartbeat_max_duration BIGINT NOT NULL DEFAULT 0 -- heartbeat max duration
+);
+
+
+CREATE TABLE audits (
+  id BIGSERIAL PRIMARY KEY, -- 自增主键
+  action VARCHAR(255) NOT NULL, -- 操作类型
+  target_name VARCHAR(255) NOT NULL, -- 目标名称
+  new_content TEXT NOT NULL, -- 新内容
+  old_content TEXT NOT NULL, -- 旧内容
+  operator VARCHAR(255) NOT NULL, -- 操作人
+  create_at BIGINT NOT NULL DEFAULT 0 -- 创建时间
+);

@@ -3,6 +3,7 @@ package record
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,8 +18,9 @@ import (
 )
 
 type RecordRuleContext struct {
-	datasourceId int64
-	quit         chan struct{}
+	datasourceId   int64
+	datasourceName string
+	quit           chan struct{}
 
 	scheduler   *cron.Cron
 	rule        *models.RecordingRule
@@ -26,13 +28,15 @@ type RecordRuleContext struct {
 	stats       *astats.Stats
 }
 
-func NewRecordRuleContext(rule *models.RecordingRule, datasourceId int64, promClients *prom.PromClientMap, writers *writer.WritersType, stats *astats.Stats) *RecordRuleContext {
+func NewRecordRuleContext(rule *models.RecordingRule, datasourceId int64, promClients *prom.PromClientMap,
+	writers *writer.WritersType, stats *astats.Stats, datasourceName string) *RecordRuleContext {
 	rrc := &RecordRuleContext{
-		datasourceId: datasourceId,
-		quit:         make(chan struct{}),
-		rule:         rule,
-		promClients:  promClients,
-		stats:        stats,
+		datasourceId:   datasourceId,
+		datasourceName: datasourceName,
+		quit:           make(chan struct{}),
+		rule:           rule,
+		promClients:    promClients,
+		stats:          stats,
 	}
 
 	if rule.CronPattern == "" && rule.PromEvalInterval != 0 {
@@ -100,6 +104,13 @@ func (rrc *RecordRuleContext) Eval() {
 	}
 
 	ts := ConvertToTimeSeries(value, rrc.rule)
+	if rrc.datasourceName == "Thanos" {
+		for idx := range ts {
+			sort.Slice(ts[idx].Labels, func(i, j int) bool {
+				return ts[idx].Labels[i].Name < ts[idx].Labels[j].Name
+			})
+		}
+	}
 	if len(ts) != 0 {
 		err := rrc.promClients.GetWriterCli(rrc.datasourceId).Write(ts)
 		if err != nil {

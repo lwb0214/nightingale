@@ -30,7 +30,8 @@ type Scheduler struct {
 	datasourceCache *memsto.DatasourceCacheType
 }
 
-func NewScheduler(aconf aconf.Alert, rrc *memsto.RecordingRuleCacheType, promClients *prom.PromClientMap, writers *writer.WritersType, stats *astats.Stats, datasourceCache *memsto.DatasourceCacheType) *Scheduler {
+func NewScheduler(aconf aconf.Alert, rrc *memsto.RecordingRuleCacheType, promClients *prom.PromClientMap,
+	writers *writer.WritersType, stats *astats.Stats, datasourceCache *memsto.DatasourceCacheType) *Scheduler {
 	scheduler := &Scheduler{
 		aconf:       aconf,
 		recordRules: make(map[string]*RecordRuleContext),
@@ -77,7 +78,11 @@ func (s *Scheduler) syncRecordRules() {
 				continue
 			}
 
-			recordRule := NewRecordRuleContext(rule, dsId, s.promClients, s.writers, s.stats)
+			var datasourceName string
+			if dc := s.datasourceCache.GetById(dsId); dc != nil {
+				datasourceName = dc.Name
+			}
+			recordRule := NewRecordRuleContext(rule, dsId, s.promClients, s.writers, s.stats, datasourceName)
 			recordRules[recordRule.Hash()] = recordRule
 		}
 	}
