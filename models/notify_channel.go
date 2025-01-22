@@ -1,20 +1,36 @@
 package models
 
+import (
+	"time"
+
+	"github.com/ccfos/nightingale/v6/pkg/ctx"
+)
+
 // NotifyRule 通知规则结构体
 type NotifyChannelConfig struct {
+	ID uint `json:"id" gorm:"primarykey"`
 	// 基础配置
 	Name        string `json:"name"`        // 媒介名称
 	Ident       string `json:"ident"`       // 媒介标识
 	Description string `json:"description"` // 媒介描述
 
 	// 用户参数配置
-	ParamConfig NotifyParamConfig `json:"param_config"`
+	ParamConfig NotifyParamConfig `json:"param_config" gorm:"serializer:json"`
 
 	// 通知请求配置
 	RequestType         string              `json:"request_type"` // http, stmp, script
-	HTTPRequestConfig   HTTPRequestConfig   `json:"http_request_config"`
-	SMTPRequestConfig   SMTPRequestConfig   `json:"smtp_request_config"`
-	ScriptRequestConfig ScriptRequestConfig `json:"script_request_config"`
+	HTTPRequestConfig   HTTPRequestConfig   `json:"http_request_config" gorm:"serializer:json"`
+	SMTPRequestConfig   SMTPRequestConfig   `json:"smtp_request_config" gorm:"serializer:json"`
+	ScriptRequestConfig ScriptRequestConfig `json:"script_request_config" gorm:"serializer:json"`
+
+	CreateAt int64  `json:"create_at"`
+	CreateBy string `json:"create_by"`
+	UpdateAt int64  `json:"update_at"`
+	UpdateBy string `json:"update_by"`
+}
+
+func (c *NotifyChannelConfig) TableName() string {
+	return "notify_channel"
 }
 
 // NotifyParamConfig 参数配置
@@ -92,4 +108,42 @@ type RequestDetail struct {
 	Parameters map[string]string `json:"parameters"` // URL 参数
 	Form       string            `json:"form"`       // 来源
 	Body       interface{}       `json:"body"`       // 请求体
+}
+
+func (c *NotifyChannelConfig) Update(ctx *ctx.Context, ref NotifyChannelConfig) error {
+	// ref.FE2DB()
+
+	ref.ID = c.ID
+	ref.CreateAt = c.CreateAt
+	ref.CreateBy = c.CreateBy
+	ref.UpdateAt = time.Now().Unix()
+
+	// err := ref.Verify()
+	// if err != nil {
+	// 	return err
+	// }
+	return DB(ctx).Model(c).Select("*").Updates(ref).Error
+}
+
+func NotifyChannelGet(ctx *ctx.Context, where string, args ...interface{}) (
+	*NotifyChannelConfig, error) {
+	lst, err := NotifyChannelsGet(ctx, where, args...)
+	if err != nil || len(lst) == 0 {
+		return nil, err
+	}
+	return lst[0], err
+}
+
+func NotifyChannelsGet(ctx *ctx.Context, where string, args ...interface{}) (
+	[]*NotifyChannelConfig, error) {
+	lst := make([]*NotifyChannelConfig, 0)
+	session := DB(ctx)
+	if where != "" && len(args) > 0 {
+		session = session.Where(where, args...)
+	}
+	err := session.Find(&lst).Error
+	if err != nil {
+		return nil, err
+	}
+	return lst, nil
 }

@@ -1,12 +1,23 @@
 package models
 
+import (
+	"time"
+
+	"github.com/ccfos/nightingale/v6/pkg/ctx"
+)
+
 // MessageTemplate 消息模板结构
 type MessageTemplate struct {
 	ID           uint              `json:"id" gorm:"primarykey"`
-	Name         string            `json:"name"`    // 模板名称
-	Ident        string            `json:"ident"`   // 模板标识
-	Content      map[string]string `json:"content"` // 模板内容
-	UserGroupIds []int64           `json:"user_group_ids"`
+	Name         string            `json:"name"`                           // 模板名称
+	Ident        string            `json:"ident"`                          // 模板标识
+	Content      map[string]string `json:"content" gorm:"serializer:json"` // 模板内容
+	UserGroupIds []int64           `json:"user_group_ids" gorm:"serializer:json"`
+	Private      int               `json:"private"` // 0-公开 1-私有
+	CreateAt     int64             `json:"create_at"`
+	CreateBy     string            `json:"create_by"`
+	UpdateAt     int64             `json:"update_at"`
+	UpdateBy     string            `json:"update_by"`
 }
 
 type HTTPConfig struct {
@@ -34,4 +45,45 @@ type HTTPConfig struct {
 	// 请求体配置
 	EnableBody bool   `json:"enableBody"` // 启用Body
 	Body       string `json:"body"`       // 请求体内容
+}
+
+func (t *MessageTemplate) TableName() string {
+	return "message_template"
+}
+
+func (t *MessageTemplate) Update(ctx *ctx.Context, ref MessageTemplate) error {
+	// ref.FE2DB()
+
+	ref.ID = t.ID
+	ref.CreateAt = t.CreateAt
+	ref.CreateBy = t.CreateBy
+	ref.UpdateAt = time.Now().Unix()
+
+	// err := ref.Verify()
+	// if err != nil {
+	// 	return err
+	// }
+	return DB(ctx).Model(t).Select("*").Updates(ref).Error
+}
+
+func MessageTemplateGet(ctx *ctx.Context, where string, args ...interface{}) (*MessageTemplate, error) {
+	lst, err := MessageTemplatesGet(ctx, where, args...)
+	if err != nil || len(lst) == 0 {
+		return nil, err
+	}
+	return lst[0], err
+}
+
+func MessageTemplatesGet(ctx *ctx.Context, where string, args ...interface{}) ([]*MessageTemplate, error) {
+	lst := make([]*MessageTemplate, 0)
+	session := DB(ctx)
+	if where != "" && len(args) > 0 {
+		session = session.Where(where, args...)
+	}
+
+	err := session.Debug().Find(&lst).Error
+	if err != nil {
+		return nil, err
+	}
+	return lst, nil
 }
